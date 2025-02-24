@@ -1,0 +1,319 @@
+# Question 1
+# Check and install required packages
+required_packages <- c("AER", "MASS", "margins", "lmtest", "gmm", "ggplot2", "gridExtra")
+new_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages)
+
+# Load required libraries
+library(AER)
+library(MASS)
+library(margins)
+library(lmtest)
+library(gmm)
+library(ggplot2)
+library(gridExtra)
+
+# Load data
+data <- read_excel("C:/Users/Truong Hung/Downloads/nls80.xlsx")
+
+numericvars <- sapply(nls80, is.numeric)
+numericvars
+
+data$meduc <- as.numeric(levels(factor(data$meduc)))[as.integer(factor(data$meduc))]
+data$brthord <- as.numeric(levels(factor(data$brthord)))[as.integer(factor(data$brthord))]
+data$feduc <- as.numeric(levels(factor(data$feduc)))[as.integer(factor(data$feduc))]
+
+data <- na.omit(data)   # remove missing values
+str(data)
+# Load necessary libraries
+library("ggplot2")
+library("lmtest")
+library("readxl")
+library("car")
+library("tidyverse")
+library("dplyr")
+library("GGally")
+library("sandwich")
+
+#Descriptive Analysis of the dataset
+summary(nls80)
+
+#Visualization
+hist(data$wage)
+hist(data$hours)
+hist(data$iq)
+hist(data$kww)
+hist(data$educ)
+hist(data$exper)
+hist(data$tenure)
+hist(data$age)
+barplot(table(data$married))
+barplot(table(data$black))
+barplot(table(data$south))
+barplot(table(data$urban))
+hist(data$sibs)
+hist(data$brthord)
+hist(data$meduc)
+hist(data$feduc)
+
+#Linear Regression
+model1 <- lm(lwage ~ educ + hours + iq + kww + exper, data = data)
+
+summary(model1)
+
+
+#Test for heteroskedasticity
+bptest(model1)
+
+#Robust standard errors to account for heteroskedasticity
+coeftest(model1, vcov = vcovHC(model1, type = 'HC0'))
+#Test for multicollinearity
+vif(model1)
+#Question 2:
+# Check and install required packages
+required_packages <- c("AER", "MASS", "margins", "lmtest", "gmm", "ggplot2", "gridExtra")
+new_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages)
+
+# Load required libraries
+library(AER)
+library(MASS)
+library(margins)
+library(lmtest)
+library(gmm)
+library(ggplot2)
+library(gridExtra)
+
+# Load data
+data <- read_excel("C:/Users/Truong Hung/Downloads/nls80.xlsx")
+
+numericvars <- sapply(nls80, is.numeric)
+numericvars
+
+data$meduc <- as.numeric(levels(factor(data$meduc)))[as.integer(factor(data$meduc))]
+data$brthord <- as.numeric(levels(factor(data$brthord)))[as.integer(factor(data$brthord))]
+data$feduc <- as.numeric(levels(factor(data$feduc)))[as.integer(factor(data$feduc))]
+
+data <- na.omit(data)   # remove missing values
+str(data)
+# Undergraduate Education
+
+# Create undergrad variable
+data$undergrad <- ifelse(data$educ > 15, 1, 0)
+
+# Logit model using GLM
+logit_model <- glm(undergrad ~ age + iq + married + black + south + urban + sibs + feduc, 
+                   family = binomial(link = "logit"), data = data)
+summary(logit_model)
+
+# Probit model using GLM
+probit_model <- glm(undergrad ~ age + iq + married + black + south + urban + sibs + feduc, 
+                    family = binomial(link = "probit"), data = data)
+summary(probit_model)
+
+# Marginal effects
+margins_logit <- margins(logit_model)
+summary(margins_logit)
+
+margins_probit <- margins(probit_model)
+summary(margins_probit)
+
+# Plot estimated probabilities
+data$pred_logit <- predict(logit_model, type = "response")
+data$pred_probit <- predict(probit_model, type = "response")
+
+p1 <- ggplot(data, aes(x = iq, y = pred_logit)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "Logit: Estimated Probability of Undergrad by IQ",
+       x = "IQ", y = "Probability of Undergrad")
+
+p2 <- ggplot(data, aes(x = iq, y = pred_probit)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "Probit: Estimated Probability of Undergrad by IQ",
+       x = "IQ", y = "Probability of Undergrad")
+
+grid.arrange(p1, p2, ncol = 2)
+
+# Question 3 
+# 1. Generate a dataset with 1000 observations and two variables
+required_packages <- c("AER", "stargazer", "readxl", "lmtest")
+new_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages)
+
+# Load necessary libraries
+library(AER)
+library(stargazer)
+library(readxl)
+library(lmtest)
+# Load the data
+data <- read_excel("C:/Users/Truong Hung/Downloads/nls80.xlsx")
+
+# Make sure all the variables in the data set are numeric
+numericvars <- sapply(data, is.numeric)
+numericvars
+
+data$meduc<-as.numeric(as.character(data$meduc))
+data$feduc<-as.numeric(as.character(data$feduc))
+data$brthord<-as.numeric(as.character(data$brthord))
+
+# Set seed for reproducibility 
+set.seed(123)
+
+# Number of observations
+n <- 1000
+
+# Generate the exogenous variable: 'exper'
+exper <- runif(n, 0, 30)  # uniformly distributed between 0 and 30 years
+
+# Create an error term 'u' (this will be shared to induce endogeneity)
+u <- rnorm(n, mean = 0, sd = 1)
+
+# Generate the potentially endogenous variable: 'educ'
+# By incorporating 'u', we ensure educ is correlated with the error term in lwage.
+educ <- 12 + 0.5 * u + rnorm(n, mean = 0, sd = 1)
+
+# Specify parameters for the lwage equation
+beta0 <- 0.5 # intercept
+beta1 <- 0.1  # effect of education on lwage
+beta2 <- 0.05 # effect of experience on lwage
+
+# Generate the dependent variable: 'lwage'
+# Note: Using the same 'u' here creates the endogeneity issue for educ.
+lwage <- beta0 + beta1 * educ + beta2 * exper + u
+
+# Combine everything into a data frame
+data <- data.frame(exper, educ, lwage)
+
+# Peek at the first few rows of your dataset
+head(data)
+
+# 2. Estimate the model using OLS
+model_ols <- lm(lwage ~ educ + exper, data = data)
+summary(model_ols)
+
+n_iter <- 1000  # Number of replications
+n <- 1000       # Number of observations per replication
+
+# Prepare a matrix to store coefficient estimates for each iteration
+coef_est <- matrix(NA, n_iter, 3)
+colnames(coef_est) <- c("Intercept", "educ", "exper")
+
+for (i in 1:n_iter) {
+  # Generate exogenous variable 'exper'
+  exper <- runif(n, 0, 30)  # Experience: uniformly distributed between 0 and 30 years
+  
+  # Create an error term 'u'
+  u <- rnorm(n, mean = 0, sd = 1)
+  
+  # Generate the potentially endogenous variable 'educ'
+  # Note: incorporating 'u' makes educ correlated with the error term in the wage equation.
+  educ <- 12 + 0.5 * u + rnorm(n, mean = 0, sd = 1)
+  
+  # Generate the dependent variable 'lwage' using our linear model:
+  # lwage = 0.5 + 0.1*educ + 0.05*exper + u
+  lwage <- 0.5 + 0.1 * educ + 0.05 * exper + u
+  
+  # Combine the variables into a data frame
+  data_sim <- data.frame(exper, educ, lwage)
+  
+  # Estimate the OLS regression: lwage on educ and exper
+  fit <- lm(lwage ~ educ + exper, data = data_sim)
+  
+  # Store the coefficient estimates (Intercept, educ, exper)
+  coef_est[i, ] <- coef(fit)
+}
+
+# Look at the first few rows of the stored coefficient estimates
+head(coef_est)
+
+# True parameter values based on the DGP
+head(coef_est)
+true_beta0 <- 0.5
+true_beta1 <- 0.1
+true_beta2 <- 0.05
+
+# Calculate the average estimated coefficients across simulations
+mean_coef <- colMeans(coef_est)
+
+bias_educ <- mean_coef["educ"] - true_beta1
+bias_exper <- mean_coef["exper"] - true_beta2
+
+cat("Bias for educ coefficient:", bias_educ, "\n")
+cat("Bias for exper coefficient:", bias_exper, "\n")
+
+# Visualize the distribution of the estimates
+par(mfrow = c(1, 2))  # Set plotting area for two side-by-side plots
+
+# Histogram for the educ coefficient
+hist(coef_est[,"educ"], breaks = 30, main = "Distribution of Educ Coefficient", 
+     xlab = "Coefficient for educ", col = "skyblue", border = "white")
+abline(v = true_beta1, col = "red", lwd = 2)  # True value
+
+# Histogram for the exper coefficient
+hist(coef_est[,"exper"], breaks = 30, main = "Distribution of Exper Coefficient", 
+     xlab = "Coefficient for exper", col = "lightgreen", border = "white")
+abline(v = true_beta2, col = "red", lwd = 2)  # True value
+
+for (i in 1:n_iter) {
+  # Generate exogenous variable 'exper'
+  exper <- runif(n, 0, 30)  # Experience uniformly between 0 and 30 years
+  
+  # Generate instruments: father's and mother's education
+  feduc <- rnorm(n, mean = 12, sd = 2)  
+  meduc <- rnorm(n, mean = 12, sd = 2)
+  
+  # Create an error term 'u' (common to both educ and lwage)
+  u <- rnorm(n, mean = 0, sd = 1)
+  
+  # Generate the potentially endogenous variable 'educ'
+  # Incorporate feduc and meduc to ensure they correlate with educ
+  # and add 0.5*u to induce endogeneity plus additional noise.
+  educ <- 12 + 0.3 * feduc + 0.2 * meduc + 0.5 * u + rnorm(n, mean = 0, sd = 1)
+  
+  # Generate the dependent variable 'lwage'
+  lwage <- true_beta0 + true_beta1 * educ + true_beta2 * exper + u
+  
+  # Combine into a data frame
+  data_sim <- data.frame(exper, feduc, meduc, educ, lwage)
+  
+  # OLS estimation: lwage ~ educ + exper
+  fit_ols <- lm(lwage ~ educ + exper, data = data_sim)
+  ols_coef_est[i, ] <- coef(fit_ols)
+  
+  # 2SLS estimation:
+  # We instrument 'educ' with feduc and meduc while treating 'exper' as exogenous.
+  fit_iv <- ivreg(lwage ~ educ + exper | feduc + meduc + exper, data = data_sim)
+  iv_coef_est[i, ] <- coef(fit_iv)
+}
+
+# Calculate average estimated coefficients across replications
+mean_ols <- colMeans(ols_coef_est)
+mean_iv  <- colMeans(iv_coef_est)
+
+# Compute bias: difference between average estimates and true parameter values
+bias_ols_educ  <- mean_ols["educ"]  - true_beta1
+bias_ols_exper <- mean_ols["exper"] - true_beta2
+
+bias_iv_educ   <- mean_iv["educ"]   - true_beta1
+bias_iv_exper  <- mean_iv["exper"]  - true_beta2
+
+cat("OLS Bias for educ:", bias_ols_educ, "\n")
+cat("OLS Bias for exper:", bias_ols_exper, "\n")
+cat("2SLS Bias for educ:", bias_iv_educ, "\n")
+cat("2SLS Bias for exper:", bias_iv_exper, "\n")
+
+# Visualize the distribution of the estimates for the educ coefficient
+par(mfrow = c(1, 2))  # Side-by-side plots
+
+# Histogram for OLS estimates of the educ coefficient
+hist(ols_coef_est[,"educ"], breaks = 30, main = "OLS: Educ Coefficient",
+     xlab = "Coefficient for educ", col = "skyblue", border = "white")
+abline(v = true_beta1, col = "red", lwd = 2)  # True coefficient
+
+# Histogram for 2SLS estimates of the educ coefficient
+hist(iv_coef_est[,"educ"], breaks = 30, main = "2SLS: Educ Coefficient",
+     xlab = "Coefficient for educ", col = "lightgreen", border = "white")
+abline(v = true_beta1, col = "red", lwd = 2)  # True coefficient
+
